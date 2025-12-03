@@ -4,13 +4,25 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ระบบเช็คชื่อพนักงาน</title>
+
+    <!-- SDK ของระบบ -->
     <script src="/_sdk/data_sdk.js"></script>
     <script src="/_sdk/element_sdk.js"></script>
+
+    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Chart.js สำหรับกราฟ -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
     <style>
       body {
         box-sizing: border-box;
         font-family: 'Sarabun', 'Noto Sans Thai', sans-serif;
+      }
+
+      * {
+        box-sizing: border-box;
       }
 
       .status-present { background-color: #dcfce7; }
@@ -60,25 +72,44 @@
       @keyframes spin {
         to { transform: rotate(360deg); }
       }
+
+      .card-shadow {
+        box-shadow: 0 10px 25px rgba(15, 23, 42, 0.08);
+      }
     </style>
   </head>
   <body class="w-full min-h-full bg-gradient-to-br from-blue-50 to-indigo-100">
-    <div class="w-full min-h-full p-6">
+    <div class="w-full min-h-full p-6 max-w-6xl mx-auto">
       <!-- Header -->
-      <div class="bg-white rounded-lg shadow-md p-6 mb-6">
-        <h1 class="text-3xl font-bold text-indigo-900 mb-2" id="company-name">Gosoft.co.th</h1>
-        <p class="text-xl text-indigo-700" id="department-name">Techncal service support</p>
-        <p class="text-lg text-gray-600">Head of Unit: <span id="manager-name">Putinan Suramarna</span></p>
-        <p class="text-lg text-gray-600">Head of Unit: <span id="manager-name">Prawit Tangmanopeanchai</span></p>
+      <div class="bg-white rounded-lg shadow-md p-6 mb-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div>
+          <h1 class="text-3xl font-bold text-indigo-900 mb-2" id="company-name">Gosoft.co.th</h1>
+          <p class="text-xl text-indigo-700" id="department-name">Techncal service support</p>
+          <p class="text-lg text-gray-600">
+            Head of Unit: <span id="manager-name">Putinan Suramarna</span>
+          </p>
+        </div>
+        <div class="text-right">
+          <p class="text-sm text-gray-500">เวลาปัจจุบัน</p>
+          <p class="text-base font-semibold text-gray-800" id="current-time"></p>
+        </div>
       </div>
 
       <!-- Navigation Tabs -->
       <div class="bg-white rounded-lg shadow-md mb-6">
-        <div class="flex border-b">
-          <button class="tab-btn px-6 py-3 font-semibold text-indigo-600 border-b-2 border-indigo-600" data-tab="attendance">เช็คชื่อพนักงาน</button>
-          <button class="tab-btn px-6 py-3 font-semibold text-gray-600 hover:text-indigo-600" data-tab="employees">จัดการพนักงาน</button>
-          <button class="tab-btn px-6 py-3 font-semibold text-gray-600 hover:text-indigo-600" data-tab="history">ประวัติการเช็คชื่อ</button>
-          <button class="tab-btn px-6 py-3 font-semibold text-gray-600 hover:text-indigo-600" data-tab="summary">สรุปภาพรวม</button>
+        <div class="flex border-b overflow-x-auto">
+          <button class="tab-btn px-6 py-3 font-semibold text-indigo-600 border-b-2 border-indigo-600 whitespace-nowrap" data-tab="attendance">
+            เช็คชื่อพนักงาน
+          </button>
+          <button class="tab-btn px-6 py-3 font-semibold text-gray-600 hover:text-indigo-600 whitespace-nowrap" data-tab="employees">
+            จัดการพนักงาน
+          </button>
+          <button class="tab-btn px-6 py-3 font-semibold text-gray-600 hover:text-indigo-600 whitespace-nowrap" data-tab="history">
+            ประวัติการเช็คชื่อ
+          </button>
+          <button class="tab-btn px-6 py-3 font-semibold text-gray-600 hover:text-indigo-600 whitespace-nowrap" data-tab="summary">
+            สรุปภาพรวม
+          </button>
         </div>
       </div>
 
@@ -88,9 +119,9 @@
           <div class="flex items-center gap-4 mb-4">
             <label class="font-semibold text-gray-700">เลือกวันที่:</label>
             <input type="date" id="attendance-date" class="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500">
-            <span class="text-gray-600" id="current-time"></span>
+            <span class="text-gray-600" id="current-time-inline"></span>
           </div>
-          <div class="grid grid-cols-4 gap-3 mb-6">
+          <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
             <div class="bg-green-100 p-3 rounded-lg text-center">
               <div class="text-2xl font-bold text-green-700" id="count-present">0</div>
               <div class="text-sm text-gray-600">ทำงาน</div>
@@ -151,6 +182,326 @@
         </div>
       </div>
 
+      <!-- History Tab -->
+      <div id="tab-history" class="tab-content hidden">
+        <div class="bg-white rounded-2xl card-shadow p-6 mb-6">
+          <h2 class="text-2xl font-bold text-indigo-900 mb-4">
+            ประวัติการเช็คชื่อ (มุมมองตารางแบบองค์กร)
+          </h2>
+
+          <!-- Filter แถวบน -->
+          <div class="flex flex-col lg:flex-row gap-4 lg:items-end lg:justify-between mb-4">
+            <!-- Left Filters -->
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+              <!-- วันที่ -->
+              <div class="flex flex-col gap-1">
+                <label for="history-date" class="text-xs font-semibold text-gray-600">
+                  วันที่
+                </label>
+                <input
+                  type="date"
+                  id="history-date"
+                  class="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                />
+              </div>
+
+              <!-- สถานะ -->
+              <div class="flex flex-col gap-1">
+                <label for="history-status" class="text-xs font-semibold text-gray-600">
+                  สถานะ
+                </label>
+                <select
+                  id="history-status"
+                  class="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                >
+                  <option value="">ทั้งหมด</option>
+                  <option value="present">มาตรงเวลา</option>
+                  <option value="late">มาสาย</option>
+                  <option value="leave">ลา</option>
+                  <option value="absent">ขาด</option>
+                </select>
+              </div>
+
+              <!-- แผนก -->
+              <div class="flex flex-col gap-1">
+                <label for="history-dept" class="text-xs font-semibold text-gray-600">
+                  แผนก
+                </label>
+                <select
+                  id="history-dept"
+                  class="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                >
+                  <option value="">ทั้งหมด</option>
+                  <option value="Technical support">Technical support</option>
+                  <option value="Cloud Engineer">Cloud Engineer</option>
+                </select>
+              </div>
+
+              <!-- ค้นหา -->
+              <div class="flex flex-col gap-1">
+                <label for="history-search" class="text-xs font-semibold text-gray-600">
+                  ค้นหาชื่อ / รหัสพนักงาน
+                </label>
+                <div class="relative">
+                  <input
+                    type="text"
+                    id="history-search"
+                    placeholder="พิมพ์ชื่อ หรือรหัสพนักงาน..."
+                    class="w-full pl-9 pr-3 py-2 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                  />
+                  <span
+                    class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm"
+                  >🔍</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Right Buttons -->
+            <div class="flex flex-wrap gap-2">
+              <button
+                id="history-reset-adv"
+                class="px-3 py-2 text-xs md:text-sm rounded-lg border border-gray-300 text-gray-600 hover:bg-gray-50 transition"
+              >
+                ล้างตัวกรอง
+              </button>
+              <button
+                id="btn-export-xlsx"
+                class="px-3 py-2 text-xs md:text-sm rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white font-semibold transition"
+              >
+                Export Excel
+              </button>
+              <button
+                id="btn-export-pdf"
+                class="px-3 py-2 text-xs md:text-sm rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-semibold transition"
+              >
+                Export PDF
+              </button>
+            </div>
+          </div>
+
+          <!-- Advanced Table -->
+          <div class="overflow-x-auto border border-gray-100 rounded-xl">
+            <table class="min-w-full text-sm">
+              <thead class="bg-gray-50">
+                <tr>
+                  <th class="px-3 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                    วันที่
+                  </th>
+                  <th class="px-3 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                    รหัสพนักงาน
+                  </th>
+                  <th class="px-3 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                    ชื่อพนักงาน
+                  </th>
+                  <th class="px-3 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                    แผนก
+                  </th>
+                  <th class="px-3 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                    เวลาเข้า
+                  </th>
+                  <th class="px-3 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                    เวลาออก
+                  </th>
+                  <th class="px-3 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                    สถานะ
+                  </th>
+                  <th class="px-3 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                    ชั่วโมงทำงาน
+                  </th>
+                </tr>
+              </thead>
+              <tbody id="history-tbody" class="divide-y divide-gray-100">
+                <!-- เติมด้วย JS -->
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Pagination -->
+          <div class="mt-4 flex flex-col md:flex-row md:items-center md:justify-between gap-2 text-xs md:text-sm text-gray-500">
+            <p id="history-summary-text"></p>
+            <div class="flex items-center gap-2 justify-end">
+              <button
+                id="history-prev"
+                class="px-3 py-1.5 rounded-lg border border-gray-300 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                ก่อนหน้า
+              </button>
+              <span id="history-page-label"></span>
+              <button
+                id="history-next"
+                class="px-3 py-1.5 rounded-lg border border-gray-300 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                ถัดไป
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Summary Tab (มุมมองใหม่ + Filter ช่วงวันที่) -->
+      <div id="tab-summary" class="tab-content hidden">
+        <div class="grid gap-4 md:gap-6">
+          <!-- Title + Date Range Filter -->
+          <div class="bg-white rounded-lg shadow-md p-6">
+            <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+              <div>
+                <h2 class="text-2xl font-bold text-indigo-900 mb-1">
+                  สรุปภาพรวมการเช็คชื่อพนักงาน
+                </h2>
+                <p class="text-gray-600">
+                  แสดงข้อมูลสถิติการเข้างาน สถานะ และแผนก ตามช่วงวันที่ที่เลือก
+                </p>
+                <p id="summary-range-label" class="text-xs text-gray-400 mt-2">
+                  <!-- จะอัปเดตด้วย JS -->
+                </p>
+              </div>
+              <div class="flex flex-col sm:flex-row gap-2 items-start sm:items-end">
+                <div class="flex flex-col gap-1">
+                  <label class="text-xs font-semibold text-gray-600">วันที่เริ่มต้น</label>
+                  <input
+                    type="date"
+                    id="summary-start-date"
+                    class="px-3 py-2 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                  />
+                </div>
+                <div class="flex flex-col gap-1">
+                  <label class="text-xs font-semibold text-gray-600">วันที่สิ้นสุด</label>
+                  <input
+                    type="date"
+                    id="summary-end-date"
+                    class="px-3 py-2 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                  />
+                </div>
+                <div class="flex gap-2">
+                  <button
+                    id="summary-range-reset"
+                    class="mt-4 px-3 py-2 text-xs md:text-sm rounded-lg border border-gray-300 text-gray-600 hover:bg-gray-50 transition"
+                  >
+                    รีเซ็ตเป็นวันนี้
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Top Stat Cards (อิงช่วงวันที่ที่เลือก) -->
+          <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div class="bg-white rounded-2xl card-shadow px-4 py-3 flex flex-col gap-1">
+              <p class="text-xs font-semibold text-gray-500">
+                พนักงานทั้งหมด (มีข้อมูลในช่วง)
+              </p>
+              <p id="sum-total-emp" class="text-2xl font-bold text-gray-900">-</p>
+              <p class="text-xs text-emerald-600">
+                นับจากรหัสพนักงานที่มีในประวัติของช่วงวันที่ที่เลือก
+              </p>
+            </div>
+
+            <div class="bg-white rounded-2xl card-shadow px-4 py-3 flex flex-col gap-1">
+              <p class="text-xs font-semibold text-gray-500">
+                เข้างานตรงเวลา (ช่วงที่เลือก)
+              </p>
+              <p id="sum-present-today" class="text-2xl font-bold text-emerald-600">-</p>
+              <p class="text-xs text-gray-400">
+                จำนวนครั้งที่สถานะเป็น "ตรงเวลา"
+              </p>
+            </div>
+
+            <div class="bg-white rounded-2xl card-shadow px-4 py-3 flex flex-col gap-1">
+              <p class="text-xs font-semibold text-gray-500">
+                มาสาย (ช่วงที่เลือก)
+              </p>
+              <p id="sum-late-today" class="text-2xl font-bold text-amber-500">-</p>
+              <p class="text-xs text-amber-600">
+                ใช้ดูแนวโน้มการมาสายโดยรวม
+              </p>
+            </div>
+
+            <div class="bg-white rounded-2xl card-shadow px-4 py-3 flex flex-col gap-1">
+              <p class="text-xs font-semibold text-gray-500">
+                ลา / ขาด (ช่วงที่เลือก)
+              </p>
+              <p id="sum-leave-absent-today" class="text-2xl font-bold text-rose-500">-</p>
+              <p class="text-xs text-rose-500">
+                รวมสถานะ "ลา" และ "ขาด"
+              </p>
+            </div>
+          </div>
+
+          <!-- Middle: Charts -->
+          <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
+            <div class="bg-white rounded-2xl card-shadow p-4">
+              <div class="flex items-center justify-between mb-2">
+                <h3 class="text-sm font-semibold text-gray-800">
+                  สัดส่วนสถานะการเข้างาน (ช่วงที่เลือก)
+                </h3>
+                <span class="text-xs text-gray-400">จากข้อมูลที่อยู่ในช่วงวันที่</span>
+              </div>
+              <div class="h-64">
+                <canvas id="chart-status-today"></canvas>
+              </div>
+            </div>
+
+            <div class="bg-white rounded-2xl card-shadow p-4">
+              <div class="flex items-center justify-between mb-2">
+                <h3 class="text-sm font-semibold text-gray-800">
+                  แนวโน้มมาสายรายวัน (ตามช่วงวันที่เลือก)
+                </h3>
+                <span class="text-xs text-gray-400">
+                  ถ้าไม่เลือกช่วงวันที่ ระบบจะใช้ข้อมูลของ "วันนี้"
+                </span>
+              </div>
+              <div class="h-64">
+                <canvas id="chart-late-trend"></canvas>
+              </div>
+            </div>
+          </div>
+
+          <!-- Bottom: Table by Department -->
+          <div class="bg-white rounded-2xl card-shadow p-4 md:p-5 mb-6">
+            <div class="flex items-center justify-between mb-3">
+              <div>
+                <h3 class="text-sm md:text-base font-semibold text-gray-900">
+                  สรุปตามแผนก (อิงข้อมูลในช่วงวันที่ที่เลือก)
+                </h3>
+                <p class="text-xs text-gray-400">
+                  ใช้ดูการเข้างานของแต่ละแผนกในมุมมองผู้บริหาร
+                </p>
+              </div>
+            </div>
+
+            <div class="overflow-x-auto border border-gray-100 rounded-xl">
+              <table class="min-w-full text-sm">
+                <thead class="bg-gray-50">
+                  <tr>
+                    <th class="px-3 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                      แผนก
+                    </th>
+                    <th class="px-3 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                      ตรงเวลา
+                    </th>
+                    <th class="px-3 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                      มาสาย
+                    </th>
+                    <th class="px-3 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                      ลา
+                    </th>
+                    <th class="px-3 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                      ขาด
+                    </th>
+                    <th class="px-3 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                      % เข้างาน
+                    </th>
+                  </tr>
+                </thead>
+                <tbody id="summary-dept-tbody" class="divide-y divide-gray-100">
+                  <!-- เติมด้วย JS -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- Success Modal -->
       <div id="success-modal" class="modal">
         <div class="bg-white rounded-lg shadow-xl p-6 max-w-md w-full mx-4">
@@ -158,7 +509,9 @@
             <div class="text-6xl mb-4">✓</div>
             <h3 class="text-2xl font-bold text-green-600 mb-2">บันทึกข้อมูลเรียบร้อย</h3>
             <div id="modal-summary" class="text-gray-600 mb-4"></div>
-            <button id="close-modal-btn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-6 rounded-lg">ปิด</button>
+            <button id="close-modal-btn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-6 rounded-lg">
+              ปิด
+            </button>
           </div>
         </div>
       </div>
@@ -171,16 +524,35 @@
         manager_name: "Putinan Suramarna",
       };
 
+      const today = new Date();
+      const todayISO = today.toISOString().split('T')[0];
+
       let employees = [];
       let attendanceRecords = [];
       let currentDate = new Date().toISOString().split('T')[0];
       let currentAttendance = {};
 
+      // โครงสำหรับ Summary / History ใหม่
+      let displayRecords = [];
+      let chartStatusTodayInstance = null;
+      let lateTrendChartInstance = null;
+
+      // History แบบองค์กร
+      const ADV_PAGE_SIZE = 7;
+      let advCurrentPage = 1;
+      let advFilteredRecords = [];
+
+      // ช่วงวันที่สำหรับ Summary
+      let summaryStartDate = '';
+      let summaryEndDate = '';
+
       const dataHandler = {
         onDataChanged(data) {
-          attendanceRecords = data;
-          updateHistoryView();
+          attendanceRecords = Array.isArray(data) ? data : [];
+          refreshDisplayRecords();
           updateSummaryView();
+          updateHistoryView();
+          applyAdvancedFilters();
         }
       };
 
@@ -222,11 +594,19 @@
 
         initializeDefaultEmployees();
         setupEventListeners();
+        setupAdvancedHistoryEvents();
+        setupSummaryFilterEvents();
+
         updateCurrentTime();
         setInterval(updateCurrentTime, 1000);
 
         document.getElementById('attendance-date').value = currentDate;
         renderAttendanceList();
+
+        refreshDisplayRecords();
+        updateSummaryView();
+        updateHistoryView();
+        applyAdvancedFilters();
       }
 
       function initializeDefaultEmployees() {
@@ -284,19 +664,26 @@
           btn.classList.add('text-gray-600');
         });
 
-        document.querySelector(`[data-tab="${tabName}"]`).classList.add('text-indigo-600', 'border-b-2', 'border-indigo-600');
-        document.querySelector(`[data-tab="${tabName}"]`).classList.remove('text-gray-600');
+        const activeBtn = document.querySelector(`[data-tab="${tabName}"]`);
+        if (activeBtn) {
+          activeBtn.classList.add('text-indigo-600', 'border-b-2', 'border-indigo-600');
+          activeBtn.classList.remove('text-gray-600');
+        }
 
         document.querySelectorAll('.tab-content').forEach(content => {
           content.classList.add('hidden');
         });
 
-        document.getElementById(`tab-${tabName}`).classList.remove('hidden');
+        const activeTab = document.getElementById(`tab-${tabName}`);
+        if (activeTab) {
+          activeTab.classList.remove('hidden');
+        }
 
         if (tabName === 'employees') {
           renderEmployeesList();
         } else if (tabName === 'history') {
           updateHistoryView();
+          applyAdvancedFilters();
         } else if (tabName === 'summary') {
           updateSummaryView();
         }
@@ -304,7 +691,7 @@
 
       function updateCurrentTime() {
         const now = new Date();
-        const timeStr = now.toLocaleString('th-TH', {
+        const timeStrFull = now.toLocaleString('th-TH', {
           year: 'numeric',
           month: 'long',
           day: 'numeric',
@@ -312,17 +699,24 @@
           minute: '2-digit',
           second: '2-digit'
         });
+        const timeStrShort = now.toLocaleTimeString('th-TH', {
+          hour: '2-digit',
+          minute: '2-digit',
+          second: '2-digit'
+        });
+
         const timeElement = document.getElementById('current-time');
-        if (timeElement) {
-          timeElement.textContent = timeStr;
-        }
+        if (timeElement) timeElement.textContent = timeStrFull;
+
+        const timeInline = document.getElementById('current-time-inline');
+        if (timeInline) timeInline.textContent = timeStrShort;
       }
 
       function renderAttendanceList() {
         const container = document.getElementById('attendance-list');
         container.innerHTML = '';
 
-        employees.forEach((employee, index) => {
+        employees.forEach((employee) => {
           const status = currentAttendance[employee.id] || '';
           const statusClass = status ? `status-${status}` : '';
 
@@ -338,11 +732,11 @@
                 <div class="text-gray-600">${employee.name}</div>
                 <div class="text-sm text-gray-500">${employee.position} - ${employee.department}</div>
               </div>
-              <div class="flex gap-2">
-                <button class="btn-status px-4 py-2 rounded-lg font-semibold ${status === 'present' ? 'bg-green-500 text-white' : 'bg-gray-200 text-gray-700'}" onclick="setAttendance('${employee.id}', 'present', ${index})">ทำงาน</button>
-                <button class="btn-status px-4 py-2 rounded-lg font-semibold ${status === 'absent' ? 'bg-red-500 text-white' : 'bg-gray-200 text-gray-700'}" onclick="setAttendance('${employee.id}', 'absent', ${index})">wfh</button>
-                <button class="btn-status px-4 py-2 rounded-lg font-semibold ${status === 'leave' ? 'bg-yellow-500 text-white' : 'bg-gray-200 text-gray-700'}" onclick="setAttendance('${employee.id}', 'leave', ${index})">ลางาน</button>
-                <button class="btn-status px-4 py-2 rounded-lg font-semibold ${status === 'late' ? 'bg-orange-500 text-white' : 'bg-gray-200 text-gray-700'}" onclick="setAttendance('${employee.id}', 'late', ${index})">มาสาย</button>
+              <div class="flex flex-wrap gap-2 justify-end">
+                <button class="btn-status px-4 py-2 rounded-lg font-semibold ${status === 'present' ? 'bg-green-500 text-white' : 'bg-gray-200 text-gray-700'}" onclick="setAttendance('${employee.id}', 'present')">ทำงาน</button>
+                <button class="btn-status px-4 py-2 rounded-lg font-semibold ${status === 'absent' ? 'bg-red-500 text-white' : 'bg-gray-200 text-gray-700'}" onclick="setAttendance('${employee.id}', 'absent')">wfh</button>
+                <button class="btn-status px-4 py-2 rounded-lg font-semibold ${status === 'leave' ? 'bg-yellow-500 text-white' : 'bg-gray-200 text-gray-700'}" onclick="setAttendance('${employee.id}', 'leave')">ลางาน</button>
+                <button class="btn-status px-4 py-2 rounded-lg font-semibold ${status === 'late' ? 'bg-orange-500 text-white' : 'bg-gray-200 text-gray-700'}" onclick="setAttendance('${employee.id}', 'late')">มาสาย</button>
               </div>
             </div>
             <div class="mt-3">
@@ -355,7 +749,7 @@
         updateCounts();
       }
 
-      function setAttendance(employeeId, status, index) {
+      function setAttendance(employeeId, status) {
         currentAttendance[employeeId] = status;
         renderAttendanceList();
       }
@@ -371,7 +765,7 @@
         document.getElementById('count-leave').textContent = counts.leave;
         document.getElementById('count-late').textContent = counts.late;
       }
-      
+
       async function saveAttendance() {
         const btn = document.getElementById('save-attendance-btn');
         const loading = btn.querySelector('.loading');
@@ -379,27 +773,37 @@
         btn.disabled = true;
 
         const timestamp = new Date().toISOString();
+        const newRecords = [];
 
         for (const employee of employees) {
           const status = currentAttendance[employee.id] || '';
           const note = document.getElementById(`note-${employee.id}`)?.value || '';
 
           if (status) {
-            if (window.dataSdk) {
-              const result = await window.dataSdk.create({
-                employee_id: employee.id,
-                attendance_date: currentDate,
-                status: status,
-                note: note,
-                timestamp: timestamp
-              });
+            const record = {
+              employee_id: employee.id,
+              attendance_date: currentDate,
+              status: status,
+              note: note,
+              timestamp: timestamp
+            };
 
+            attendanceRecords.push(record);
+            newRecords.push(record);
+
+            if (window.dataSdk) {
+              const result = await window.dataSdk.create(record);
               if (!result.isOk) {
-                console.error("Failed to save attendance");
+                console.error("Failed to save attendance", result);
               }
             }
           }
         }
+
+        refreshDisplayRecords();
+        updateSummaryView();
+        updateHistoryView();
+        applyAdvancedFilters();
 
         loading.classList.remove('active');
         btn.disabled = false;
@@ -464,6 +868,8 @@
 
       function renderEmployeesList() {
         const container = document.getElementById('employees-list');
+        if (!container) return;
+
         container.innerHTML = '';
 
         employees.forEach((employee, index) => {
@@ -471,7 +877,7 @@
           card.className = 'bg-gray-50 rounded-lg p-4 flex items-center gap-4';
           card.innerHTML = `
             <div class="w-12 h-12 bg-gray-200 rounded-full flex items-center justify-center overflow-hidden flex-shrink-0">
-              <img src="${employee.photo}" alt="photo" class="w-full h-full object-cover">
+              <img src="${employee.photo || ''}" alt="photo" class="w-full h-full object-cover">
             </div>
             <div class="flex-1">
               <div class="font-bold text-gray-800">หมายเลขพนักงาน ${employee.id}</div>
@@ -495,6 +901,7 @@
         const toast = document.createElement('div');
         toast.className = 'fixed top-4 right-4 bg-indigo-600 text-white px-6 py-3 rounded-lg shadow-lg z-50';
         toast.textContent = message;
+
         document.body.appendChild(toast);
 
         setTimeout(() => {
@@ -502,6 +909,451 @@
         }, 3000);
       }
 
+      // ---- Helper วันที่ไทย ----
+      function formatDateThai(dateStr) {
+        if (!dateStr) return '-';
+        const d = new Date(dateStr);
+        if (isNaN(d)) return dateStr;
+        const months = [
+          'ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.',
+          'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.',
+        ];
+        return `${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear() + 543}`;
+      }
+
+      // ---- Helper: คืน array วันที่ระหว่าง start..end ----
+      function getDatesInRange(startStr, endStr) {
+        const result = [];
+        if (!startStr || !endStr) return result;
+
+        const start = new Date(startStr);
+        const end = new Date(endStr);
+
+        if (isNaN(start) || isNaN(end)) return result;
+
+        let s = start;
+        let e = end;
+        if (s > e) {
+          const tmp = s;
+          s = e;
+          e = tmp;
+        }
+
+        for (let d = new Date(s); d <= e; d.setDate(d.getDate() + 1)) {
+          result.push(new Date(d));
+        }
+        return result;
+      }
+
+      // ---- เตรียมข้อมูลกลางจาก attendanceRecords ----
+      function refreshDisplayRecords() {
+        displayRecords = attendanceRecords.map(r => {
+          const emp = employees.find(e => e.id === r.employee_id);
+          const name = emp ? emp.name : r.employee_id;
+          const dept = emp ? emp.department : '';
+          const dateStr = r.attendance_date || (r.timestamp ? r.timestamp.split('T')[0] : '');
+          return {
+            empId: r.employee_id,
+            name: name,
+            dept: dept,
+            status: (r.status || '').toLowerCase(),
+            date: dateStr,
+            timestamp: r.timestamp || (dateStr ? dateStr + ' 00:00' : '')
+          };
+        });
+
+        advFilteredRecords = [...displayRecords];
+      }
+
+      // ---- ตั้งค่า Event สำหรับ Filter Summary ----
+      function setupSummaryFilterEvents() {
+        const startEl = document.getElementById('summary-start-date');
+        const endEl = document.getElementById('summary-end-date');
+        const resetEl = document.getElementById('summary-range-reset');
+
+        if (startEl) {
+          startEl.addEventListener('change', () => {
+            summaryStartDate = startEl.value;
+            updateSummaryView();
+          });
+        }
+
+        if (endEl) {
+          endEl.addEventListener('change', () => {
+            summaryEndDate = endEl.value;
+            updateSummaryView();
+          });
+        }
+
+        if (resetEl) {
+          resetEl.addEventListener('click', () => {
+            summaryStartDate = '';
+            summaryEndDate = '';
+            if (startEl) startEl.value = '';
+            if (endEl) endEl.value = '';
+            updateSummaryView();
+          });
+        }
+      }
+
+      function updateSummaryView() {
+        // -----------------------------
+        // 1) กำหนดช่วงวันที่ที่ใช้สรุป / ใช้กับกราฟ
+        // -----------------------------
+        let rangeStart, rangeEnd;
+        let rangeLabelText = '';
+
+        if (!summaryStartDate && !summaryEndDate) {
+          // ไม่เลือกอะไรเลย = ใช้วันนี้เป็นช่วง
+          rangeStart = todayISO;
+          rangeEnd = todayISO;
+          rangeLabelText = `ช่วงที่เลือก: วันนี้ (${formatDateThai(todayISO)})`;
+        } else {
+          rangeStart = summaryStartDate || summaryEndDate;
+          rangeEnd = summaryEndDate || summaryStartDate;
+
+          if (rangeStart > rangeEnd) {
+            const tmp = rangeStart;
+            rangeStart = rangeEnd;
+            rangeEnd = tmp;
+          }
+
+          const sText = rangeStart ? formatDateThai(rangeStart) : 'ไม่ระบุ';
+          const eText = rangeEnd ? formatDateThai(rangeEnd) : 'ไม่ระบุ';
+          rangeLabelText = `ช่วงที่เลือก: ${sText} - ${eText}`;
+        }
+
+        const rangeLabelEl = document.getElementById('summary-range-label');
+        if (rangeLabelEl) {
+          rangeLabelEl.textContent = rangeLabelText;
+        }
+
+        // -----------------------------
+        // 2) ข้อมูลที่ใช้สำหรับ Summary (การ์ด + ตารางแผนก)
+        // -----------------------------
+        const recsForSummary = displayRecords.filter((r) => {
+          if (!r.date) return false;
+          if (rangeStart && r.date < rangeStart) return false;
+          if (rangeEnd && r.date > rangeEnd) return false;
+          return true;
+        });
+
+        const totalEmp = new Set(recsForSummary.map(r => r.empId)).size;
+        const presentCnt = recsForSummary.filter(r => r.status === 'present').length;
+        const lateCnt = recsForSummary.filter(r => r.status === 'late').length;
+        const leaveCnt = recsForSummary.filter(r => r.status === 'leave').length;
+        const absentCnt = recsForSummary.filter(r => r.status === 'absent').length;
+        const totalLeaveAbsent = leaveCnt + absentCnt;
+
+        const totalEmpEl = document.getElementById('sum-total-emp');
+        const presentEl = document.getElementById('sum-present-today');
+        const lateEl = document.getElementById('sum-late-today');
+        const laEl = document.getElementById('sum-leave-absent-today');
+
+        if (totalEmpEl) totalEmpEl.textContent = totalEmp || '-';
+        if (presentEl) presentEl.textContent = presentCnt;
+        if (lateEl) lateEl.textContent = lateCnt;
+        if (laEl) laEl.textContent = totalLeaveAbsent;
+
+        // -----------------------------
+        // 3) กราฟโดนัท "สัดส่วนสถานะการเข้างาน (ช่วงที่เลือก)"
+        // -----------------------------
+        const statusCanvas = document.getElementById('chart-status-today');
+        if (statusCanvas && typeof Chart !== 'undefined') {
+          const ctxStatus = statusCanvas.getContext('2d');
+          if (chartStatusTodayInstance) chartStatusTodayInstance.destroy();
+          chartStatusTodayInstance = new Chart(ctxStatus, {
+            type: 'doughnut',
+            data: {
+              labels: ['ตรงเวลา', 'มาสาย', 'ลา', 'ขาด'],
+              datasets: [
+                {
+                  data: [presentCnt, lateCnt, leaveCnt, absentCnt],
+                },
+              ],
+            },
+            options: {
+              plugins: {
+                legend: {
+                  position: 'bottom',
+                  labels: {
+                    font: { family: 'Sarabun', size: 11 },
+                  },
+                },
+              },
+              maintainAspectRatio: false,
+            },
+          });
+        }
+
+        // -----------------------------
+        // 4) กราฟ "แนวโน้มมาสายรายวัน" ตามช่วงวันที่ที่เลือก
+        // -----------------------------
+        const dateObjs = getDatesInRange(rangeStart, rangeEnd);
+        const labels = [];
+        const lateCounts = [];
+
+        dateObjs.forEach((d) => {
+          const iso = d.toISOString().slice(0, 10);
+          const label = d.getDate() + '/' + (d.getMonth() + 1);
+          labels.push(label);
+
+          const countLate = displayRecords.filter(
+            (r) => r.date === iso && r.status === 'late'
+          ).length;
+
+          lateCounts.push(countLate);
+        });
+
+        const lateCanvas = document.getElementById('chart-late-trend');
+        if (lateCanvas && typeof Chart !== 'undefined') {
+          const ctxLate = lateCanvas.getContext('2d');
+          if (lateTrendChartInstance) lateTrendChartInstance.destroy();
+          lateTrendChartInstance = new Chart(ctxLate, {
+            type: 'bar',
+            data: {
+              labels: labels,
+              datasets: [
+                {
+                  label: 'จำนวนมาสาย',
+                  data: lateCounts,
+                },
+              ],
+            },
+            options: {
+              plugins: {
+                legend: {
+                  display: false,
+                },
+              },
+              scales: {
+                x: {
+                  ticks: {
+                    font: { family: 'Sarabun', size: 10 },
+                  },
+                },
+                y: {
+                  beginAtZero: true,
+                  ticks: { stepSize: 1 },
+                },
+              },
+              maintainAspectRatio: false,
+            },
+          });
+        }
+
+        // -----------------------------
+        // 5) ตาราง "สรุปตามแผนก" (ใช้ recsForSummary)
+        // -----------------------------
+        const tbody = document.getElementById('summary-dept-tbody');
+        if (tbody) {
+          const deptMap = {};
+          recsForSummary.forEach((rec) => {
+            const dept = rec.dept || '-';
+            if (!deptMap[dept]) {
+              deptMap[dept] = { present: 0, late: 0, leave: 0, absent: 0 };
+            }
+            if (deptMap[dept][rec.status] !== undefined) {
+              deptMap[dept][rec.status]++;
+            }
+          });
+
+          tbody.innerHTML = '';
+          Object.keys(deptMap).forEach((dept) => {
+            const d = deptMap[dept];
+            const total = d.present + d.late + d.leave + d.absent;
+            const attend = d.present + d.late;
+            const percent = total ? ((attend / total) * 100).toFixed(1) : '0.0';
+
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+              <td class="px-3 py-2 text-gray-800 font-medium">${dept}</td>
+              <td class="px-3 py-2 text-right text-emerald-600 font-semibold">${d.present}</td>
+              <td class="px-3 py-2 text-right text-amber-500 font-semibold">${d.late}</td>
+              <td class="px-3 py-2 text-right text-sky-600 font-semibold">${d.leave}</td>
+              <td class="px-3 py-2 text-right text-rose-500 font-semibold">${d.absent}</td>
+              <td class="px-3 py-2 text-right text-gray-800 font-semibold">${percent}%</td>
+            `;
+            tbody.appendChild(tr);
+          });
+
+          if (Object.keys(deptMap).length === 0) {
+            tbody.innerHTML = `
+              <tr>
+                <td colspan="6" class="px-3 py-4 text-center text-xs text-gray-400">
+                  ยังไม่มีข้อมูลในช่วงวันที่ที่เลือก
+                </td>
+              </tr>
+            `;
+          }
+        }
+      }
+
+      function updateHistoryView() {
+        // History ใช้มุมมองตารางแบบองค์กร
+        renderAdvancedHistoryTable();
+      }
+
+      // ---- History แบบองค์กร (Filter + Table + Page) ----
+      function setupAdvancedHistoryEvents() {
+        const dateEl = document.getElementById('history-date');
+        const statusEl = document.getElementById('history-status');
+        const deptEl = document.getElementById('history-dept');
+        const searchEl = document.getElementById('history-search');
+        const resetEl = document.getElementById('history-reset-adv');
+        const prevEl = document.getElementById('history-prev');
+        const nextEl = document.getElementById('history-next');
+        const exportXlsx = document.getElementById('btn-export-xlsx');
+        const exportPdf = document.getElementById('btn-export-pdf');
+
+        if (dateEl) dateEl.addEventListener('change', applyAdvancedFilters);
+        if (statusEl) statusEl.addEventListener('change', applyAdvancedFilters);
+        if (deptEl) deptEl.addEventListener('change', applyAdvancedFilters);
+        if (searchEl) searchEl.addEventListener('input', applyAdvancedFilters);
+
+        if (resetEl) {
+          resetEl.addEventListener('click', () => {
+            if (dateEl) dateEl.value = '';
+            if (statusEl) statusEl.value = '';
+            if (deptEl) deptEl.value = '';
+            if (searchEl) searchEl.value = '';
+            applyAdvancedFilters();
+          });
+        }
+
+        if (prevEl) {
+          prevEl.addEventListener('click', () => {
+            if (advCurrentPage > 1) {
+              advCurrentPage--;
+              renderAdvancedHistoryTable();
+            }
+          });
+        }
+
+        if (nextEl) {
+          nextEl.addEventListener('click', () => {
+            const totalPages = Math.max(1, Math.ceil(advFilteredRecords.length / ADV_PAGE_SIZE));
+            if (advCurrentPage < totalPages) {
+              advCurrentPage++;
+              renderAdvancedHistoryTable();
+            }
+          });
+        }
+
+        if (exportXlsx) {
+          exportXlsx.addEventListener('click', () => {
+            alert('ตัวอย่าง UI: ตรงนี้สามารถผูกกับฟังก์ชัน Export Excel ภายหลังได้');
+          });
+        }
+        if (exportPdf) {
+          exportPdf.addEventListener('click', () => {
+            alert('ตัวอย่าง UI: ตรงนี้สามารถผูกกับฟังก์ชัน Export PDF ภายหลังได้');
+          });
+        }
+      }
+
+      function applyAdvancedFilters() {
+        const dateVal = document.getElementById('history-date')?.value || '';
+        const statusVal = document.getElementById('history-status')?.value || '';
+        const deptVal = document.getElementById('history-dept')?.value || '';
+        const searchVal = (document.getElementById('history-search')?.value || '').trim().toLowerCase();
+
+        advFilteredRecords = displayRecords.filter((rec) => {
+          if (dateVal && rec.date !== dateVal) return false;
+          if (statusVal && rec.status !== statusVal) return false;
+          if (deptVal && rec.dept !== deptVal) return false;
+          if (searchVal) {
+            const text = (rec.empId + ' ' + rec.name).toLowerCase();
+            if (!text.includes(searchVal)) return false;
+          }
+          return true;
+        });
+
+        advCurrentPage = 1;
+        renderAdvancedHistoryTable();
+      }
+
+      const STATUS_TEXT = {
+        present: 'มาตรงเวลา',
+        late: 'มาสาย',
+        leave: 'ลา',
+        absent: 'ขาด',
+      };
+
+      const STATUS_BADGE = {
+        present: 'inline-flex px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-700',
+        late: 'inline-flex px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-700',
+        leave: 'inline-flex px-2 py-0.5 rounded-full text-xs font-medium bg-sky-100 text-sky-700',
+        absent: 'inline-flex px-2 py-0.5 rounded-full text-xs font-medium bg-rose-100 text-rose-700',
+      };
+
+      function renderAdvancedHistoryTable() {
+        const tbody = document.getElementById('history-tbody');
+        if (!tbody) return;
+        tbody.innerHTML = '';
+
+        const total = advFilteredRecords.length;
+        const totalPages = Math.max(1, Math.ceil(total / ADV_PAGE_SIZE));
+
+        if (advCurrentPage > totalPages) advCurrentPage = totalPages;
+
+        const startIdx = (advCurrentPage - 1) * ADV_PAGE_SIZE;
+        const pageData = advFilteredRecords.slice(startIdx, startIdx + ADV_PAGE_SIZE);
+
+        if (!pageData.length) {
+          tbody.innerHTML =
+            '<tr><td colspan="8" class="px-3 py-6 text-center text-sm text-gray-400">ไม่มีข้อมูลประวัติการเช็คชื่อในเงื่อนไขที่เลือก</td></tr>';
+        } else {
+          pageData.forEach((rec) => {
+            let timeStr = '-';
+            if (rec.timestamp) {
+              const d = new Date(rec.timestamp);
+              if (!isNaN(d)) {
+                const hh = String(d.getHours()).padStart(2, '0');
+                const mm = String(d.getMinutes()).padStart(2, '0');
+                timeStr = `${hh}:${mm}`;
+              }
+            }
+
+            const tr = document.createElement('tr');
+            tr.className = 'hover:bg-gray-50';
+            tr.innerHTML = `
+              <td class="px-3 py-2 text-gray-700">${formatDateThai(rec.date)}</td>
+              <td class="px-3 py-2 text-gray-700">${rec.empId}</td>
+              <td class="px-3 py-2 text-gray-800 font-medium">${rec.name}</td>
+              <td class="px-3 py-2 text-gray-600">${rec.dept || '-'}</td>
+              <td class="px-3 py-2 text-gray-700">${timeStr}</td>
+              <td class="px-3 py-2 text-gray-700">-</td>
+              <td class="px-3 py-2">
+                <span class="${STATUS_BADGE[rec.status] || ''}">
+                  ${STATUS_TEXT[rec.status] || rec.status}
+                </span>
+              </td>
+              <td class="px-3 py-2 text-right text-gray-800 font-semibold">
+                -
+              </td>
+            `;
+            tbody.appendChild(tr);
+          });
+        }
+
+        const summaryText = document.getElementById('history-summary-text');
+        if (summaryText) {
+          summaryText.textContent = `แสดง ${pageData.length ? startIdx + 1 : 0}–${startIdx + pageData.length} จากทั้งหมด ${total} รายการ`;
+        }
+
+        const pageLabel = document.getElementById('history-page-label');
+        if (pageLabel) {
+          pageLabel.textContent = `หน้า ${advCurrentPage} / ${totalPages}`;
+        }
+
+        const prevBtn = document.getElementById('history-prev');
+        const nextBtn = document.getElementById('history-next');
+        if (prevBtn) prevBtn.disabled = advCurrentPage === 1;
+        if (nextBtn) nextBtn.disabled = advCurrentPage === totalPages;
+      }
+
+      // export ฟังก์ชันที่เรียกจาก HTML
       window.setAttendance = setAttendance;
       window.deleteEmployee = deleteEmployee;
 

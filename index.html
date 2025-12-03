@@ -712,6 +712,7 @@
         if (timeInline) timeInline.textContent = timeStrShort;
       }
 
+      // ✅ ปรับ layout ปุ่มให้แนวตั้งบนมือถือ / แนวนอนบนจอใหญ่
       function renderAttendanceList() {
         const container = document.getElementById('attendance-list');
         container.innerHTML = '';
@@ -723,24 +724,57 @@
           const card = document.createElement('div');
           card.className = `bg-white rounded-lg shadow-md p-4 transition-all ${statusClass}`;
           card.innerHTML = `
-            <div class="flex items-center gap-4">
-              <div class="w-16 h-16 bg-gray-200 rounded-full flex items-center justify-center overflow-hidden flex-shrink-0">
-                <img src="${employee.photo}" alt="photo" class="w-full h-full object-cover">
+            <div class="flex flex-col sm:flex-row gap-4">
+              <!-- รูป + ข้อมูลพนักงาน -->
+              <div class="flex items-center gap-4 flex-1">
+                <div class="w-16 h-16 bg-gray-200 rounded-full flex items-center justify-center overflow-hidden flex-shrink-0">
+                  <img src="${employee.photo || ''}" alt="photo" class="w-full h-full object-cover">
+                </div>
+                <div class="flex-1">
+                  <div class="font-bold text-lg text-gray-800">หมายเลขพนักงาน ${employee.id}</div>
+                  <div class="text-gray-600">${employee.name}</div>
+                  <div class="text-sm text-gray-500">${employee.position} - ${employee.department}</div>
+                </div>
               </div>
-              <div class="flex-1">
-                <div class="font-bold text-lg text-gray-800">หมายเลขพนักงาน ${employee.id}</div>
-                <div class="text-gray-600">${employee.name}</div>
-                <div class="text-sm text-gray-500">${employee.position} - ${employee.department}</div>
-              </div>
-              <div class="flex flex-wrap gap-2 justify-end">
-                <button class="btn-status px-4 py-2 rounded-lg font-semibold ${status === 'present' ? 'bg-green-500 text-white' : 'bg-gray-200 text-gray-700'}" onclick="setAttendance('${employee.id}', 'present')">ทำงาน</button>
-                <button class="btn-status px-4 py-2 rounded-lg font-semibold ${status === 'absent' ? 'bg-red-500 text-white' : 'bg-gray-200 text-gray-700'}" onclick="setAttendance('${employee.id}', 'absent')">wfh</button>
-                <button class="btn-status px-4 py-2 rounded-lg font-semibold ${status === 'leave' ? 'bg-yellow-500 text-white' : 'bg-gray-200 text-gray-700'}" onclick="setAttendance('${employee.id}', 'leave')">ลางาน</button>
-                <button class="btn-status px-4 py-2 rounded-lg font-semibold ${status === 'late' ? 'bg-orange-500 text-white' : 'bg-gray-200 text-gray-700'}" onclick="setAttendance('${employee.id}', 'late')">มาสาย</button>
+
+              <!-- ปุ่มสถานะ -->
+              <div class="w-full sm:w-auto flex flex-col items-stretch sm:items-end gap-2">
+                <div class="flex flex-col md:flex-row md:flex-wrap gap-2 w-full md:justify-end">
+                  <button
+                    class="btn-status w-full md:w-auto px-4 py-2 rounded-lg font-semibold ${status === 'present' ? 'bg-green-500 text-white' : 'bg-gray-200 text-gray-700'}"
+                    onclick="setAttendance('${employee.id}', 'present')"
+                  >
+                    ทำงาน
+                  </button>
+                  <button
+                    class="btn-status w-full md:w-auto px-4 py-2 rounded-lg font-semibold ${status === 'absent' ? 'bg-red-500 text-white' : 'bg-gray-200 text-gray-700'}"
+                    onclick="setAttendance('${employee.id}', 'absent')"
+                  >
+                    wfh
+                  </button>
+                  <button
+                    class="btn-status w-full md:w-auto px-4 py-2 rounded-lg font-semibold ${status === 'leave' ? 'bg-yellow-500 text-white' : 'bg-gray-200 text-gray-700'}"
+                    onclick="setAttendance('${employee.id}', 'leave')"
+                  >
+                    ลางาน
+                  </button>
+                  <button
+                    class="btn-status w-full md:w-auto px-4 py-2 rounded-lg font-semibold ${status === 'late' ? 'bg-orange-500 text-white' : 'bg-gray-200 text-gray-700'}"
+                    onclick="setAttendance('${employee.id}', 'late')"
+                  >
+                    มาสาย
+                  </button>
+                </div>
               </div>
             </div>
+
             <div class="mt-3">
-              <textarea class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500" rows="2" placeholder="หมายเหตุ....." id="note-${employee.id}"></textarea>
+              <textarea
+                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                rows="2"
+                placeholder="หมายเหตุ....."
+                id="note-${employee.id}"
+              ></textarea>
             </div>
           `;
           container.appendChild(card);
@@ -997,14 +1031,11 @@
       }
 
       function updateSummaryView() {
-        // -----------------------------
-        // 1) กำหนดช่วงวันที่ที่ใช้สรุป / ใช้กับกราฟ
-        // -----------------------------
+        // 1) กำหนดช่วงวันที่ใช้สรุป
         let rangeStart, rangeEnd;
         let rangeLabelText = '';
 
         if (!summaryStartDate && !summaryEndDate) {
-          // ไม่เลือกอะไรเลย = ใช้วันนี้เป็นช่วง
           rangeStart = todayISO;
           rangeEnd = todayISO;
           rangeLabelText = `ช่วงที่เลือก: วันนี้ (${formatDateThai(todayISO)})`;
@@ -1028,9 +1059,7 @@
           rangeLabelEl.textContent = rangeLabelText;
         }
 
-        // -----------------------------
-        // 2) ข้อมูลที่ใช้สำหรับ Summary (การ์ด + ตารางแผนก)
-        // -----------------------------
+        // 2) ข้อมูลที่ใช้สำหรับ Summary
         const recsForSummary = displayRecords.filter((r) => {
           if (!r.date) return false;
           if (rangeStart && r.date < rangeStart) return false;
@@ -1055,9 +1084,7 @@
         if (lateEl) lateEl.textContent = lateCnt;
         if (laEl) laEl.textContent = totalLeaveAbsent;
 
-        // -----------------------------
-        // 3) กราฟโดนัท "สัดส่วนสถานะการเข้างาน (ช่วงที่เลือก)"
-        // -----------------------------
+        // 3) กราฟโดนัท
         const statusCanvas = document.getElementById('chart-status-today');
         if (statusCanvas && typeof Chart !== 'undefined') {
           const ctxStatus = statusCanvas.getContext('2d');
@@ -1086,9 +1113,7 @@
           });
         }
 
-        // -----------------------------
-        // 4) กราฟ "แนวโน้มมาสายรายวัน" ตามช่วงวันที่ที่เลือก
-        // -----------------------------
+        // 4) กราฟแนวโน้มมาสาย
         const dateObjs = getDatesInRange(rangeStart, rangeEnd);
         const labels = [];
         const lateCounts = [];
@@ -1142,9 +1167,7 @@
           });
         }
 
-        // -----------------------------
-        // 5) ตาราง "สรุปตามแผนก" (ใช้ recsForSummary)
-        // -----------------------------
+        // 5) ตารางตามแผนก
         const tbody = document.getElementById('summary-dept-tbody');
         if (tbody) {
           const deptMap = {};
@@ -1190,7 +1213,6 @@
       }
 
       function updateHistoryView() {
-        // History ใช้มุมมองตารางแบบองค์กร
         renderAdvancedHistoryTable();
       }
 
